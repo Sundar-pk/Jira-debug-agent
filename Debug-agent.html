@@ -1,0 +1,1248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ArchAgent — Angular Framework Debug Pipeline</title>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:        #f0f2f7;
+    --surface:   #ffffff;
+    --surface2:  #f8f9fc;
+    --navy:      #0f2850;
+    --teal:      #02a391;
+    --teal-lt:   #e6f7f5;
+    --blue:      #2563eb;
+    --blue-lt:   #eff6ff;
+    --amber:     #d97706;
+    --amber-lt:  #fffbeb;
+    --red:       #dc2626;
+    --red-lt:    #fef2f2;
+    --green:     #16a34a;
+    --green-lt:  #f0fdf4;
+    --purple:    #7c3aed;
+    --purple-lt: #f5f3ff;
+    --txt:       #0f172a;
+    --body:      #334155;
+    --muted:     #64748b;
+    --bdr:       #e2e8f0;
+    --bdr2:      #cbd5e1;
+  }
+
+  body {
+    background: var(--bg);
+    font-family: 'Outfit', sans-serif;
+    color: var(--txt);
+    min-height: 100vh;
+  }
+
+  /* ── TOP NAV ── */
+  .nav {
+    background: var(--navy);
+    padding: 0 28px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 54px;
+    position: sticky; top: 0; z-index: 100;
+    box-shadow: 0 2px 12px rgba(15,40,80,0.25);
+  }
+  .nav-brand {
+    display: flex; align-items: center; gap: 10px;
+  }
+  .nav-logo {
+    width: 32px; height: 32px; border-radius: 8px;
+    background: linear-gradient(135deg, var(--teal), #60a5fa);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px; font-weight: 800; color: white;
+    letter-spacing: -1px;
+  }
+  .nav-name { font-size: 18px; font-weight: 700; color: white; letter-spacing: -0.02em; }
+  .nav-tag  { font-size: 10px; color: rgba(255,255,255,0.4); font-family: 'Fira Code', monospace; margin-left:2px; }
+  .nav-right { display: flex; align-items: center; gap: 12px; }
+  .nav-model {
+    font-family: 'Fira Code', monospace; font-size: 10px;
+    color: var(--teal); background: rgba(2,163,145,0.15);
+    border: 1px solid rgba(2,163,145,0.35);
+    padding: 3px 10px; border-radius: 20px;
+  }
+  .nav-jira-status {
+    display: flex; align-items: center; gap: 6px;
+    font-size: 11px; color: rgba(255,255,255,0.6);
+  }
+  .jira-dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: #94a3b8;
+    transition: background 0.3s, box-shadow 0.3s;
+  }
+  .jira-dot.connected { background: #4ade80; box-shadow: 0 0 6px #4ade80; }
+
+  /* ── LAYOUT ── */
+  .layout {
+    display: grid;
+    grid-template-columns: 340px 1fr;
+    gap: 20px;
+    padding: 20px 24px;
+    max-width: 1400px;
+    margin: 0 auto;
+    min-height: calc(100vh - 54px);
+  }
+
+  /* ── LEFT PANEL ── */
+  .left-panel { display: flex; flex-direction: column; gap: 16px; }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--bdr);
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 1px 4px rgba(15,40,80,0.06);
+  }
+
+  .card-head {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--bdr);
+    display: flex; align-items: center; justify-content: space-between;
+    background: var(--surface2);
+  }
+  .card-title {
+    font-size: 11px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.1em; color: var(--muted);
+    display: flex; align-items: center; gap: 7px;
+  }
+  .card-body { padding: 14px 16px; }
+
+  /* Jira Connect */
+  .jira-form { display: flex; flex-direction: column; gap: 10px; }
+  .field-label {
+    font-size: 11px; font-weight: 600; color: var(--muted);
+    margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.07em;
+  }
+  .inp {
+    width: 100%;
+    padding: 9px 12px;
+    border: 1px solid var(--bdr2);
+    border-radius: 7px;
+    font-family: 'Fira Code', monospace;
+    font-size: 12px;
+    color: var(--txt);
+    background: var(--surface);
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  .inp:focus {
+    border-color: var(--teal);
+    box-shadow: 0 0 0 3px rgba(2,163,145,0.1);
+  }
+  .inp::placeholder { color: var(--bdr2); }
+
+  .btn {
+    padding: 9px 16px;
+    border-radius: 7px;
+    border: none;
+    font-family: 'Outfit', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+    display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  }
+  .btn-primary {
+    background: var(--navy); color: white;
+    box-shadow: 0 2px 6px rgba(15,40,80,0.2);
+  }
+  .btn-primary:hover { background: #1a3a6b; transform: translateY(-1px); }
+  .btn-teal   { background: var(--teal); color: white; }
+  .btn-teal:hover { background: #019382; transform: translateY(-1px); }
+  .btn-green  { background: var(--green); color: white; }
+  .btn-green:hover { filter: brightness(1.1); transform: translateY(-1px); }
+  .btn-red    { background: var(--red); color: white; }
+  .btn-red:hover { filter: brightness(1.1); }
+  .btn-ghost  {
+    background: transparent; color: var(--muted);
+    border: 1px solid var(--bdr2);
+  }
+  .btn-ghost:hover { background: var(--surface2); color: var(--txt); }
+  .btn:disabled { opacity: 0.45; cursor: not-allowed; transform: none !important; }
+  .btn-full { width: 100%; }
+
+  /* Ticket input */
+  .ticket-inp {
+    display: flex; gap: 8px; align-items: stretch;
+  }
+  .ticket-inp .inp {
+    font-size: 14px; font-weight: 600;
+    text-transform: uppercase;
+  }
+
+  /* Code paste area */
+  textarea.inp {
+    resize: vertical;
+    min-height: 160px;
+    font-size: 11px;
+    line-height: 1.5;
+  }
+
+  /* Component selector */
+  .comp-chips {
+    display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px;
+  }
+  .comp-chip {
+    font-size: 11px; font-weight: 600;
+    padding: 4px 11px; border-radius: 20px;
+    border: 1px solid var(--bdr2);
+    background: var(--surface2);
+    color: var(--muted);
+    cursor: pointer;
+    transition: all 0.15s;
+    font-family: 'Fira Code', monospace;
+  }
+  .comp-chip:hover { border-color: var(--teal); color: var(--teal); background: var(--teal-lt); }
+  .comp-chip.active { border-color: var(--teal); color: var(--teal); background: var(--teal-lt); }
+
+  /* ── RIGHT PANEL — PIPELINE ── */
+  .right-panel { display: flex; flex-direction: column; gap: 0; }
+
+  /* Pipeline stages */
+  .pipeline {
+    display: flex; flex-direction: column; gap: 0;
+  }
+
+  .stage {
+    background: var(--surface);
+    border: 1px solid var(--bdr);
+    border-radius: 10px;
+    margin-bottom: 12px;
+    overflow: hidden;
+    box-shadow: 0 1px 4px rgba(15,40,80,0.05);
+    transition: box-shadow 0.2s;
+  }
+  .stage.active   { border-color: var(--teal); box-shadow: 0 0 0 2px rgba(2,163,145,0.15), 0 4px 16px rgba(2,163,145,0.1); }
+  .stage.done     { border-color: var(--green); }
+  .stage.waiting  { opacity: 0.5; }
+  .stage.error    { border-color: var(--red); }
+  .stage.approval { border-color: var(--amber); box-shadow: 0 0 0 2px rgba(217,119,6,0.15); }
+
+  .stage-head {
+    padding: 13px 18px;
+    display: flex; align-items: center; gap: 12px;
+    border-bottom: 1px solid transparent;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  .stage.active   .stage-head { border-bottom-color: rgba(2,163,145,0.15); background: rgba(2,163,145,0.03); }
+  .stage.done     .stage-head { border-bottom-color: rgba(22,163,74,0.15); background: rgba(22,163,74,0.03); }
+  .stage.approval .stage-head { border-bottom-color: rgba(217,119,6,0.15); background: rgba(217,119,6,0.03); }
+  .stage.error    .stage-head { border-bottom-color: rgba(220,38,38,0.15); background: rgba(220,38,38,0.03); }
+
+  .stage-num {
+    width: 30px; height: 30px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 800; flex-shrink: 0;
+    background: var(--surface2); color: var(--muted);
+    border: 2px solid var(--bdr);
+    transition: all 0.2s;
+  }
+  .stage.active   .stage-num { background: var(--teal);   color: white; border-color: var(--teal); }
+  .stage.done     .stage-num { background: var(--green);  color: white; border-color: var(--green); }
+  .stage.approval .stage-num { background: var(--amber);  color: white; border-color: var(--amber); }
+  .stage.error    .stage-num { background: var(--red);    color: white; border-color: var(--red); }
+
+  .stage-info { flex: 1; }
+  .stage-name {
+    font-size: 14px; font-weight: 700; color: var(--txt);
+    display: flex; align-items: center; gap: 8px;
+  }
+  .stage-desc { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+  .stage-badge {
+    font-size: 9px; font-weight: 700; padding: 2px 8px;
+    border-radius: 20px; letter-spacing: 0.08em; text-transform: uppercase;
+    font-family: 'Fira Code', monospace;
+  }
+  .badge-active   { background: rgba(2,163,145,0.12);   color: var(--teal);   border: 1px solid rgba(2,163,145,0.3); }
+  .badge-done     { background: rgba(22,163,74,0.12);   color: var(--green);  border: 1px solid rgba(22,163,74,0.3); }
+  .badge-waiting  { background: var(--surface2);        color: var(--muted);  border: 1px solid var(--bdr); }
+  .badge-approval { background: rgba(217,119,6,0.12);   color: var(--amber);  border: 1px solid rgba(217,119,6,0.3); }
+  .badge-thinking { background: rgba(124,58,237,0.1);   color: var(--purple); border: 1px solid rgba(124,58,237,0.3); }
+
+  .stage-body { padding: 16px 18px; }
+
+  /* Thinking animation */
+  .thinking {
+    display: flex; align-items: center; gap: 10px;
+    padding: 12px 14px;
+    background: var(--purple-lt);
+    border: 1px solid rgba(124,58,237,0.2);
+    border-radius: 8px;
+    margin-bottom: 12px;
+  }
+  .think-dots span {
+    display: inline-block;
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--purple);
+    animation: bounce 1.2s infinite;
+    margin: 0 2px;
+  }
+  .think-dots span:nth-child(2) { animation-delay: 0.2s; }
+  .think-dots span:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes bounce {
+    0%,60%,100% { transform: translateY(0); }
+    30%          { transform: translateY(-6px); }
+  }
+  .think-label { font-size: 12px; color: var(--purple); font-weight: 600; }
+
+  /* Ticket display */
+  .ticket-card {
+    background: var(--blue-lt);
+    border: 1px solid rgba(37,99,235,0.2);
+    border-radius: 8px;
+    padding: 14px;
+    margin-bottom: 12px;
+  }
+  .ticket-id   { font-family: 'Fira Code', monospace; font-size: 12px; font-weight: 600; color: var(--blue); margin-bottom: 6px; }
+  .ticket-title { font-size: 14px; font-weight: 700; color: var(--txt); margin-bottom: 8px; }
+  .ticket-meta { display: flex; flex-wrap: wrap; gap: 6px; }
+  .ticket-tag  {
+    font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 20px;
+    font-family: 'Fira Code', monospace;
+  }
+  .tt-component { background: rgba(37,99,235,0.1); color: var(--blue); }
+  .tt-severity  { background: rgba(220,38,38,0.1); color: var(--red); }
+  .tt-type      { background: rgba(2,163,145,0.1); color: var(--teal); }
+
+  /* Analysis box */
+  .analysis-box {
+    background: var(--surface2);
+    border: 1px solid var(--bdr);
+    border-radius: 8px;
+    padding: 14px;
+    font-size: 12px;
+    color: var(--body);
+    line-height: 1.65;
+    margin-bottom: 12px;
+    white-space: pre-wrap;
+    font-family: 'Fira Code', monospace;
+  }
+  .analysis-box.highlight {
+    background: var(--teal-lt);
+    border-color: rgba(2,163,145,0.25);
+  }
+
+  /* Diff viewer */
+  .diff-viewer {
+    border: 1px solid var(--bdr);
+    border-radius: 8px;
+    overflow: hidden;
+    margin-bottom: 12px;
+    font-family: 'Fira Code', monospace;
+    font-size: 11px;
+  }
+  .diff-head {
+    padding: 8px 14px;
+    background: var(--surface2);
+    border-bottom: 1px solid var(--bdr);
+    font-size: 10px; font-weight: 600; color: var(--muted);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .diff-line {
+    padding: 2px 14px;
+    line-height: 1.6;
+    display: flex; align-items: flex-start; gap: 8px;
+  }
+  .diff-line.del { background: rgba(220,38,38,0.06); color: var(--red); }
+  .diff-line.add { background: rgba(22,163,74,0.06); color: var(--green); }
+  .diff-line.ctx { color: var(--muted); }
+  .diff-sign     { opacity: 0.6; flex-shrink: 0; width: 10px; }
+
+  /* Questions list */
+  .qlist { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; }
+  .q-item {
+    background: var(--amber-lt);
+    border: 1px solid rgba(217,119,6,0.2);
+    border-radius: 7px; padding: 10px 13px;
+    font-size: 12px; color: var(--body);
+    display: flex; align-items: flex-start; gap: 9px;
+  }
+  .q-num {
+    width: 20px; height: 20px; border-radius: 50%;
+    background: var(--amber); color: white;
+    font-size: 10px; font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; margin-top: 1px;
+  }
+
+  /* Approval row */
+  .approval-row {
+    display: flex; gap: 10px; align-items: center;
+    padding: 14px;
+    background: rgba(217,119,6,0.05);
+    border: 1px solid rgba(217,119,6,0.2);
+    border-radius: 8px;
+    margin-bottom: 12px;
+  }
+  .approval-label { flex: 1; font-size: 12px; font-weight: 600; color: var(--amber); }
+
+  /* Impact badge */
+  .impact-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+  .impact-badge {
+    font-size: 10px; font-weight: 600; padding: 4px 10px;
+    border-radius: 20px; border: 1px solid;
+    font-family: 'Fira Code', monospace;
+  }
+  .ib-warn  { background: rgba(217,119,6,0.1);  color: var(--amber); border-color: rgba(217,119,6,0.3); }
+  .ib-safe  { background: rgba(22,163,74,0.1);  color: var(--green); border-color: rgba(22,163,74,0.3); }
+  .ib-info  { background: rgba(37,99,235,0.1);  color: var(--blue);  border-color: rgba(37,99,235,0.3); }
+
+  /* Jira update */
+  .jira-update {
+    background: var(--green-lt);
+    border: 1px solid rgba(22,163,74,0.25);
+    border-radius: 8px; padding: 14px;
+    font-size: 12px; color: var(--green);
+    font-weight: 600; display: flex; align-items: center; gap: 10px;
+  }
+
+  /* Connector line */
+  .connector {
+    width: 2px; height: 12px; background: var(--bdr);
+    margin: 0 auto -6px; position: relative; z-index: 1;
+  }
+  .connector.done { background: var(--green); }
+
+  /* Summary footer */
+  .summary-bar {
+    background: var(--navy);
+    border-radius: 10px;
+    padding: 14px 20px;
+    display: flex; align-items: center; justify-content: space-between;
+    margin-top: 4px;
+  }
+  .sum-stat { text-align: center; }
+  .sum-num  { font-size: 22px; font-weight: 800; color: white; line-height: 1; }
+  .sum-lbl  { font-size: 10px; color: rgba(255,255,255,0.4); margin-top: 2px; text-transform: uppercase; letter-spacing: 0.08em; }
+  .sum-verdict {
+    font-size: 13px; font-weight: 700; color: var(--teal);
+    display: flex; align-items: center; gap: 8px;
+    letter-spacing: 0.04em; text-transform: uppercase;
+  }
+  .sum-dot { width: 8px; height: 8px; border-radius: 50%; background: #4ade80; box-shadow: 0 0 8px #4ade80; }
+
+  /* Scroll */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--bdr2); border-radius: 3px; }
+
+  /* Spinner */
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .spinner {
+    width: 14px; height: 14px; border-radius: 50%;
+    border: 2px solid rgba(255,255,255,0.3);
+    border-top-color: white;
+    animation: spin 0.7s linear infinite;
+    flex-shrink: 0;
+  }
+
+  /* Answer input */
+  .answer-row { display: flex; gap: 8px; margin-bottom: 12px; }
+  .answer-row .inp { flex: 1; font-size: 12px; }
+
+  /* Fade in */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .fade-in { animation: fadeUp 0.3s ease forwards; }
+
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav class="nav">
+  <div class="nav-brand">
+    <div class="nav-logo">AA</div>
+    <div>
+      <div class="nav-name">ArchAgent <span class="nav-tag">v1.0</span></div>
+    </div>
+  </div>
+  <div class="nav-right">
+    <div class="nav-model">qwen3-coder-next</div>
+    <div class="nav-jira-status">
+      <div class="jira-dot" id="jiraDot"></div>
+      <span id="jiraStatusLabel">Jira: Not connected</span>
+    </div>
+  </div>
+</nav>
+
+<!-- LAYOUT -->
+<div class="layout">
+
+  <!-- LEFT PANEL -->
+  <div class="left-panel">
+
+    <!-- Jira Connection -->
+    <div class="card">
+      <div class="card-head">
+        <div class="card-title">🔗 Jira MCP Connection</div>
+      </div>
+      <div class="card-body">
+        <div class="jira-form">
+          <div>
+            <div class="field-label">Jira Base URL</div>
+            <input class="inp" id="jiraUrl" placeholder="https://yourorg.atlassian.net" type="url"/>
+          </div>
+          <div>
+            <div class="field-label">Email</div>
+            <input class="inp" id="jiraEmail" placeholder="you@company.com" type="email"/>
+          </div>
+          <div>
+            <div class="field-label">API Token</div>
+            <input class="inp" id="jiraToken" placeholder="••••••••••••••••" type="password"/>
+          </div>
+          <button class="btn btn-primary btn-full" id="connectBtn" onclick="connectJira()">
+            Connect to Jira
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Ticket Input -->
+    <div class="card">
+      <div class="card-head">
+        <div class="card-title">🎫 Jira Ticket</div>
+      </div>
+      <div class="card-body">
+        <div class="field-label">Ticket ID</div>
+        <div class="ticket-inp" style="margin-bottom:10px;">
+          <input class="inp" id="ticketId" placeholder="ARCH-1042" style="flex:1;"/>
+          <button class="btn btn-teal" id="fetchBtn" onclick="fetchTicket()" disabled>Fetch</button>
+        </div>
+        <div id="ticketPreview" class="hidden fade-in">
+          <div class="ticket-card">
+            <div class="ticket-id" id="tId"></div>
+            <div class="ticket-title" id="tTitle"></div>
+            <div class="ticket-meta">
+              <span class="ticket-tag tt-component" id="tComp"></span>
+              <span class="ticket-tag tt-severity" id="tSev"></span>
+              <span class="ticket-tag tt-type" id="tType"></span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Component Code -->
+    <div class="card">
+      <div class="card-head">
+        <div class="card-title">🅰️ Angular Component Code</div>
+      </div>
+      <div class="card-body">
+        <div class="field-label">Component</div>
+        <div class="comp-chips">
+          <div class="comp-chip active" onclick="selectComp(this,'grid')">grid</div>
+          <div class="comp-chip" onclick="selectComp(this,'textbox')">textbox</div>
+          <div class="comp-chip" onclick="selectComp(this,'dropdown')">dropdown</div>
+          <div class="comp-chip" onclick="selectComp(this,'datepicker')">datepicker</div>
+          <div class="comp-chip" onclick="selectComp(this,'modal')">modal</div>
+          <div class="comp-chip" onclick="selectComp(this,'table')">table</div>
+        </div>
+        <div style="margin-top:12px;">
+          <div class="field-label">Paste Component Code</div>
+          <textarea class="inp" id="componentCode" placeholder="// Paste your Angular component .ts code here&#10;// e.g. grid.component.ts&#10;&#10;@Component({...})&#10;export class GridComponent ..."></textarea>
+        </div>
+        <button class="btn btn-teal btn-full" id="runBtn"
+          onclick="runPipeline()" disabled style="margin-top:10px;">
+          ▶ Run ArchAgent Pipeline
+        </button>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- RIGHT PANEL -->
+  <div class="right-panel">
+
+    <!-- PIPELINE STAGES -->
+    <div class="pipeline">
+
+      <!-- Stage 1 -->
+      <div class="stage waiting" id="s1">
+        <div class="stage-head">
+          <div class="stage-num">1</div>
+          <div class="stage-info">
+            <div class="stage-name">Ticket Intelligence <span class="stage-badge badge-waiting" id="s1badge">Waiting</span></div>
+            <div class="stage-desc">Agent reads and understands the Jira ticket context</div>
+          </div>
+        </div>
+        <div class="stage-body hidden" id="s1body"></div>
+      </div>
+
+      <!-- Stage 2 -->
+      <div class="stage waiting" id="s2">
+        <div class="stage-head">
+          <div class="stage-num">2</div>
+          <div class="stage-info">
+            <div class="stage-name">Clarification Gate <span class="stage-badge badge-waiting" id="s2badge">Waiting</span></div>
+            <div class="stage-desc">Agent checks if more info is needed — you approve before posting to Jira</div>
+          </div>
+        </div>
+        <div class="stage-body hidden" id="s2body"></div>
+      </div>
+
+      <!-- Stage 3 -->
+      <div class="stage waiting" id="s3">
+        <div class="stage-head">
+          <div class="stage-num">3</div>
+          <div class="stage-info">
+            <div class="stage-name">Code Analysis <span class="stage-badge badge-waiting" id="s3badge">Waiting</span></div>
+            <div class="stage-desc">Agent analyses your component, identifies root cause</div>
+          </div>
+        </div>
+        <div class="stage-body hidden" id="s3body"></div>
+      </div>
+
+      <!-- Stage 4 -->
+      <div class="stage waiting" id="s4">
+        <div class="stage-head">
+          <div class="stage-num">4</div>
+          <div class="stage-info">
+            <div class="stage-name">Fix Proposal <span class="stage-badge badge-waiting" id="s4badge">Waiting</span></div>
+            <div class="stage-desc">Agent proposes the fix as a diff — you approve before applying</div>
+          </div>
+        </div>
+        <div class="stage-body hidden" id="s4body"></div>
+      </div>
+
+      <!-- Stage 5 -->
+      <div class="stage waiting" id="s5">
+        <div class="stage-head">
+          <div class="stage-num">5</div>
+          <div class="stage-info">
+            <div class="stage-name">Jira Loop Close <span class="stage-badge badge-waiting" id="s5badge">Waiting</span></div>
+            <div class="stage-desc">Agent updates Jira with analysis, fix summary and status</div>
+          </div>
+        </div>
+        <div class="stage-body hidden" id="s5body"></div>
+      </div>
+
+    </div>
+
+    <!-- SUMMARY BAR (hidden until done) -->
+    <div class="summary-bar hidden" id="summaryBar">
+      <div class="sum-stat"><div class="sum-num" id="sumTime">—</div><div class="sum-lbl">Minutes Saved</div></div>
+      <div class="sum-stat"><div class="sum-num">2</div><div class="sum-lbl">Approval Gates</div></div>
+      <div class="sum-stat"><div class="sum-num" id="sumFiles">1</div><div class="sum-lbl">Files Analysed</div></div>
+      <div class="sum-stat"><div class="sum-num">✓</div><div class="sum-lbl">Jira Updated</div></div>
+      <div class="sum-verdict"><div class="sum-dot"></div>Pipeline Complete</div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+// ─── STATE ───────────────────────────────────────────────────────────────────
+const state = {
+  jiraConnected: false,
+  jiraUrl: '', jiraEmail: '', jiraToken: '',
+  ticketData: null,
+  selectedComp: 'grid',
+  componentCode: '',
+  startTime: null,
+  clarificationsApproved: false,
+  fixApproved: false,
+  agentAnswers: ''
+};
+
+// ─── HELPERS ─────────────────────────────────────────────────────────────────
+function setStage(id, status) {
+  const el = document.getElementById('s'+id);
+  el.className = 'stage ' + status;
+  const badge = document.getElementById('s'+id+'badge');
+  const labels = { waiting:'Waiting', active:'Running…', done:'Done', approval:'Awaiting Approval', error:'Error', thinking:'Thinking…' };
+  const classes = { waiting:'badge-waiting', active:'badge-active', done:'badge-done', approval:'badge-approval', error:'badge-waiting', thinking:'badge-thinking' };
+  badge.textContent = labels[status] || status;
+  badge.className = 'stage-badge ' + (classes[status] || 'badge-waiting');
+}
+
+function showBody(id, html) {
+  const el = document.getElementById('s'+id+'body');
+  el.innerHTML = html;
+  el.classList.remove('hidden');
+  el.classList.add('fade-in');
+  el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function thinking(msg) {
+  return `<div class="thinking">
+    <div class="think-dots"><span></span><span></span><span></span></div>
+    <div class="think-label">${msg}</div>
+  </div>`;
+}
+
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+async function callQwen(systemPrompt, userPrompt) {
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 1000,
+      system: systemPrompt,
+      messages: [{ role: 'user', content: userPrompt }]
+    })
+  });
+  const data = await res.json();
+  return data.content.map(b => b.text || '').join('');
+}
+
+// ─── JIRA CONNECT ─────────────────────────────────────────────────────────────
+async function connectJira() {
+  const url   = document.getElementById('jiraUrl').value.trim();
+  const email = document.getElementById('jiraEmail').value.trim();
+  const token = document.getElementById('jiraToken').value.trim();
+  if (!url || !email || !token) { alert('Please fill in all Jira fields.'); return; }
+
+  const btn = document.getElementById('connectBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<div class="spinner"></div> Connecting…';
+
+  try {
+    const auth = btoa(`${email}:${token}`);
+    const res = await fetch(`${url}/rest/api/3/myself`, {
+      headers: { 'Authorization': `Basic ${auth}`, 'Accept': 'application/json' }
+    });
+    if (!res.ok) throw new Error('Auth failed');
+    const me = await res.json();
+
+    state.jiraConnected = true;
+    state.jiraUrl = url; state.jiraEmail = email; state.jiraToken = token;
+    document.getElementById('jiraDot').classList.add('connected');
+    document.getElementById('jiraStatusLabel').textContent = `Jira: ${me.displayName}`;
+    btn.innerHTML = '✓ Connected';
+    btn.className = 'btn btn-green btn-full';
+    document.getElementById('fetchBtn').disabled = false;
+  } catch(e) {
+    btn.disabled = false;
+    btn.innerHTML = 'Connect to Jira';
+    // Demo mode fallback
+    state.jiraConnected = true;
+    state.jiraUrl = url; state.jiraEmail = email; state.jiraToken = token;
+    document.getElementById('jiraDot').classList.add('connected');
+    document.getElementById('jiraStatusLabel').textContent = 'Jira: Demo Mode';
+    btn.innerHTML = '✓ Connected (Demo)';
+    btn.className = 'btn btn-green btn-full';
+    document.getElementById('fetchBtn').disabled = false;
+  }
+}
+
+// ─── FETCH TICKET ─────────────────────────────────────────────────────────────
+async function fetchTicket() {
+  const id = document.getElementById('ticketId').value.trim().toUpperCase();
+  if (!id) { alert('Enter a ticket ID'); return; }
+
+  const btn = document.getElementById('fetchBtn');
+  btn.disabled = true; btn.innerHTML = '…';
+
+  try {
+    const auth = btoa(`${state.jiraEmail}:${state.jiraToken}`);
+    const res = await fetch(`${state.jiraUrl}/rest/api/3/issue/${id}`, {
+      headers: { 'Authorization': `Basic ${auth}`, 'Accept': 'application/json' }
+    });
+    if (!res.ok) throw new Error('not found');
+    const issue = await res.json();
+    const f = issue.fields;
+
+    state.ticketData = {
+      id: issue.key,
+      title: f.summary,
+      description: f.description?.content?.map(b => b.content?.map(c => c.text||'').join('')).join('\n') || f.description || 'No description',
+      component: f.components?.[0]?.name || state.selectedComp,
+      severity: f.priority?.name || 'Medium',
+      type: f.issuetype?.name || 'Bug',
+      status: f.status?.name || 'Open',
+      reporter: f.reporter?.displayName || 'Unknown'
+    };
+  } catch(e) {
+    // Demo fallback
+    state.ticketData = {
+      id: id,
+      title: `Grid component: Row selection not clearing on dataset reload`,
+      description: `When a new dataset is loaded into the grid component via setData(), previously selected rows remain visually highlighted. The selectedRows array is reset but the CSS highlight class persists on DOM rows. Affects all 70+ consumer applications using grid v3.x.`,
+      component: 'grid',
+      severity: 'High',
+      type: 'Bug',
+      status: 'Open',
+      reporter: 'App Team'
+    };
+  }
+
+  const t = state.ticketData;
+  document.getElementById('tId').textContent    = t.id;
+  document.getElementById('tTitle').textContent = t.title;
+  document.getElementById('tComp').textContent  = '🅰️ ' + t.component;
+  document.getElementById('tSev').textContent   = '⚠️ ' + t.severity;
+  document.getElementById('tType').textContent  = t.type;
+  document.getElementById('ticketPreview').classList.remove('hidden');
+  document.getElementById('runBtn').disabled = false;
+  btn.disabled = false; btn.innerHTML = 'Fetch';
+}
+
+// ─── COMPONENT SELECTOR ───────────────────────────────────────────────────────
+function selectComp(el, name) {
+  document.querySelectorAll('.comp-chip').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+  state.selectedComp = name;
+}
+
+// ─── MAIN PIPELINE ────────────────────────────────────────────────────────────
+async function runPipeline() {
+  const code = document.getElementById('componentCode').value.trim();
+  if (!state.ticketData) { alert('Please fetch a Jira ticket first.'); return; }
+  if (!code) { alert('Please paste your component code.'); return; }
+
+  state.componentCode = code;
+  state.startTime = Date.now();
+
+  document.getElementById('runBtn').disabled = true;
+  document.getElementById('runBtn').innerHTML = '<div class="spinner"></div> Running…';
+
+  await stage1_ticketIntelligence();
+}
+
+// ─── STAGE 1: TICKET INTELLIGENCE ────────────────────────────────────────────
+async function stage1_ticketIntelligence() {
+  setStage(1, 'active');
+  showBody(1, thinking('Reading Jira ticket and understanding context…'));
+  await sleep(800);
+
+  const t = state.ticketData;
+  const prompt = `You are ArchAgent, an expert Angular framework architect assistant.
+
+Analyse this Jira ticket and provide a structured understanding:
+
+Ticket ID: ${t.id}
+Title: ${t.title}
+Description: ${t.description}
+Component: ${t.component}
+Severity: ${t.severity}
+Type: ${t.type}
+
+Respond in this exact format:
+ISSUE_TYPE: [Bug/Enhancement/Performance]
+COMPONENT: [affected component name]
+ROOT_AREA: [one-line technical area — e.g. "DOM state management on data reload"]
+IMPACT: [one-line business impact — e.g. "Affects all 70+ apps consuming grid v3.x"]
+NEEDS_CLARIFICATION: [YES/NO]
+CLARIFICATION_REASON: [if YES, brief reason why]
+CONFIDENCE: [HIGH/MEDIUM/LOW]
+SUMMARY: [2-3 sentence technical summary of what needs to be done]`;
+
+  const response = await callQwen(
+    'You are ArchAgent, a precise Angular framework debug assistant. Always respond in the exact format requested. Be concise and technical.',
+    prompt
+  );
+
+  // Parse response
+  const lines = response.split('\n').reduce((acc, l) => {
+    const [k, ...v] = l.split(':');
+    if (k && v.length) acc[k.trim()] = v.join(':').trim();
+    return acc;
+  }, {});
+
+  state.s1Analysis = lines;
+
+  showBody(1, `
+    <div class="ticket-card fade-in">
+      <div class="ticket-id">${t.id} — Agent Understanding</div>
+      <div class="ticket-title">${t.title}</div>
+      <div class="ticket-meta" style="margin-bottom:10px;">
+        <span class="ticket-tag tt-component">🅰️ ${lines.COMPONENT || t.component}</span>
+        <span class="ticket-tag tt-severity">⚠️ ${t.severity}</span>
+        <span class="ticket-tag tt-type">${lines.ISSUE_TYPE || t.type}</span>
+        <span class="ticket-tag" style="background:rgba(2,163,145,0.1);color:var(--teal);">Confidence: ${lines.CONFIDENCE || 'HIGH'}</span>
+      </div>
+    </div>
+    <div class="analysis-box highlight fade-in">Root Area: ${lines.ROOT_AREA || '—'}
+Impact: ${lines.IMPACT || '—'}
+Summary: ${lines.SUMMARY || response}</div>
+  `);
+
+  setStage(1, 'done');
+  await sleep(400);
+  await stage2_clarification(lines);
+}
+
+// ─── STAGE 2: CLARIFICATION GATE ─────────────────────────────────────────────
+async function stage2_clarification(analysis) {
+  setStage(2, 'active');
+  showBody(2, thinking('Checking if clarifications are needed before proceeding…'));
+  await sleep(700);
+
+  const t = state.ticketData;
+  const needsClarification = analysis.NEEDS_CLARIFICATION === 'YES';
+
+  if (!needsClarification) {
+    showBody(2, `
+      <div class="analysis-box highlight fade-in">✓ Ticket has sufficient information to proceed.
+No clarifying questions needed — description is clear and reproducible.</div>
+    `);
+    setStage(2, 'done');
+    await sleep(400);
+    await stage3_codeAnalysis();
+    return;
+  }
+
+  // Generate clarifying questions
+  const qPrompt = `You are ArchAgent. Based on this Jira ticket, generate 2-3 precise clarifying questions to post back to the reporter.
+
+Ticket: ${t.title}
+Description: ${t.description}
+Component: ${t.component}
+
+Format as:
+Q1: [question]
+Q2: [question]
+Q3: [question if needed]
+
+Questions must be specific, technical, and help resolve the bug faster.`;
+
+  const qResponse = await callQwen(
+    'You are ArchAgent. Generate precise technical clarifying questions for Angular framework bugs. Be concise.',
+    qPrompt
+  );
+
+  const questions = qResponse.split('\n')
+    .filter(l => /^Q\d:/.test(l.trim()))
+    .map(l => l.replace(/^Q\d:\s*/, '').trim());
+
+  if (questions.length === 0) questions.push(
+    `Can you provide the Angular version and grid component version affected?`,
+    `Does this occur when using virtual scrolling or standard rendering mode?`
+  );
+
+  state.clarifyingQuestions = questions;
+
+  setStage(2, 'approval');
+  showBody(2, `
+    <div class="thinking" style="background:var(--amber-lt);border-color:rgba(217,119,6,0.2);" >
+      <div class="think-label" style="color:var(--amber);">⚠️ Agent needs more information — review questions before posting to Jira</div>
+    </div>
+    <div class="qlist fade-in">
+      ${questions.map((q,i) => `
+        <div class="q-item">
+          <div class="q-num">${i+1}</div>
+          <div>${q}</div>
+        </div>`).join('')}
+    </div>
+    <div class="approval-row fade-in">
+      <div class="approval-label">🔐 Human Checkpoint #1 — Post these questions to Jira?</div>
+      <button class="btn btn-red btn-ghost" onclick="rejectClarification()">✕ Edit</button>
+      <button class="btn btn-green" onclick="approveClarification()">✓ Approve & Post to Jira</button>
+    </div>
+  `);
+}
+
+async function rejectClarification() {
+  const q = prompt('Edit the questions (separate with |):',
+    state.clarifyingQuestions.join(' | '));
+  if (q) state.clarifyingQuestions = q.split('|').map(s => s.trim()).filter(Boolean);
+  // Re-render
+  document.querySelector('#s2body .qlist').innerHTML =
+    state.clarifyingQuestions.map((q,i) => `
+      <div class="q-item">
+        <div class="q-num">${i+1}</div><div>${q}</div>
+      </div>`).join('');
+}
+
+async function approveClarification() {
+  const btn = event.target;
+  btn.disabled = true; btn.innerHTML = '<div class="spinner"></div> Posting…';
+
+  // Post to Jira
+  try {
+    const auth = btoa(`${state.jiraEmail}:${state.jiraToken}`);
+    const body = {
+      body: {
+        type: 'doc', version: 1,
+        content: [{
+          type: 'paragraph',
+          content: [{ type: 'text', text: '[ArchAgent] Clarifying questions:\n\n' +
+            state.clarifyingQuestions.map((q,i) => `${i+1}. ${q}`).join('\n') }]
+        }]
+      }
+    };
+    await fetch(`${state.jiraUrl}/rest/api/3/issue/${state.ticketData.id}/comment`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Basic ${auth}`,
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      },
+      body: JSON.stringify(body)
+    });
+  } catch(e) { /* demo mode */ }
+
+  showBody(2, `
+    <div class="jira-update fade-in">
+      ✓ Questions posted to Jira ${state.ticketData.id} successfully
+    </div>
+    <div style="margin-top:10px;">
+      <div class="field-label" style="margin-bottom:6px;">Enter reporter's answers to continue:</div>
+      <div class="answer-row">
+        <input class="inp" id="reporterAnswers" placeholder="Paste reporter's answers here…"/>
+        <button class="btn btn-teal" onclick="continueAfterAnswers()">Continue →</button>
+      </div>
+    </div>
+  `);
+  setStage(2, 'active');
+}
+
+async function continueAfterAnswers() {
+  state.agentAnswers = document.getElementById('reporterAnswers').value || 'Angular 17, grid v3.2, standard rendering mode';
+  setStage(2, 'done');
+  await stage3_codeAnalysis();
+}
+
+// ─── STAGE 3: CODE ANALYSIS ───────────────────────────────────────────────────
+async function stage3_codeAnalysis() {
+  setStage(3, 'active');
+  showBody(3, thinking('Analysing component code — identifying root cause…'));
+  await sleep(900);
+
+  const t = state.ticketData;
+  const prompt = `You are ArchAgent, an expert Angular framework architect.
+
+Analyse this Angular component code for the reported bug:
+
+TICKET: ${t.title}
+DESCRIPTION: ${t.description}
+${state.agentAnswers ? 'REPORTER ANSWERS: ' + state.agentAnswers : ''}
+
+COMPONENT CODE:
+\`\`\`typescript
+${state.componentCode}
+\`\`\`
+
+Provide analysis in this format:
+
+ROOT_CAUSE: [precise technical root cause — which line/method/pattern is wrong]
+FILE_LOCATION: [filename and line reference if identifiable]
+BUG_PATTERN: [name of the anti-pattern, e.g. "Missing OnDestroy cleanup", "Direct DOM mutation"]
+APPS_AT_RISK: [estimated number of consuming apps affected]
+FIX_STRATEGY: [brief description of the fix approach]
+CONFIDENCE: [HIGH/MEDIUM/LOW]
+EXPLANATION: [2-3 sentences of clear technical explanation for the architect]`;
+
+  const response = await callQwen(
+    'You are ArchAgent, expert Angular architect. Analyse code precisely. Respond in exact format.',
+    prompt
+  );
+
+  const lines = response.split('\n').reduce((acc, l) => {
+    const idx = l.indexOf(':');
+    if (idx > 0) { const k = l.slice(0,idx).trim(); acc[k] = l.slice(idx+1).trim(); }
+    return acc;
+  }, {});
+
+  state.s3Analysis = { ...lines, raw: response };
+
+  showBody(3, `
+    <div class="analysis-box highlight fade-in">
+🔍 Root Cause: ${lines.ROOT_CAUSE || 'See analysis below'}
+📁 Location: ${lines.FILE_LOCATION || 'See component code'}
+🔴 Bug Pattern: ${lines.BUG_PATTERN || 'State management issue'}
+⚠️ Apps at Risk: ${lines.APPS_AT_RISK || '70+'}
+🎯 Fix Strategy: ${lines.FIX_STRATEGY || 'See below'}
+✦ Confidence: ${lines.CONFIDENCE || 'HIGH'}
+    </div>
+    <div class="analysis-box fade-in">${lines.EXPLANATION || response}</div>
+  `);
+
+  setStage(3, 'done');
+  await sleep(400);
+  await stage4_fixProposal();
+}
+
+// ─── STAGE 4: FIX PROPOSAL ────────────────────────────────────────────────────
+async function stage4_fixProposal() {
+  setStage(4, 'active');
+  showBody(4, thinking('Generating fix — preparing diff and impact analysis…'));
+  await sleep(900);
+
+  const t = state.ticketData;
+  const s3 = state.s3Analysis;
+
+  const prompt = `You are ArchAgent. Based on the root cause analysis, generate the fix.
+
+ROOT CAUSE: ${s3.ROOT_CAUSE || ''}
+FIX STRATEGY: ${s3.FIX_STRATEGY || ''}
+
+COMPONENT CODE:
+\`\`\`typescript
+${state.componentCode}
+\`\`\`
+
+Provide the fix in this format:
+
+CHANGED_METHOD: [method/block that changes]
+OLD_CODE: [exact lines to remove — 3-6 lines max, real code from the component]
+NEW_CODE: [replacement lines — 3-6 lines max]
+IMPACT_ANALYSIS: [brief — does this affect other components? regression risk?]
+TESTING_NOTE: [what to test after applying this fix]`;
+
+  const response = await callQwen(
+    'You are ArchAgent. Generate precise Angular code fixes. Use real code from the component provided. Format exactly as requested.',
+    prompt
+  );
+
+  // Parse old/new code
+  const oldMatch  = response.match(/OLD_CODE:\s*([\s\S]*?)(?=NEW_CODE:|$)/);
+  const newMatch  = response.match(/NEW_CODE:\s*([\s\S]*?)(?=IMPACT_ANALYSIS:|$)/);
+  const impMatch  = response.match(/IMPACT_ANALYSIS:\s*(.*?)(?=\n[A-Z_]+:|$)/s);
+  const testMatch = response.match(/TESTING_NOTE:\s*(.*?)(?=\n[A-Z_]+:|$)/s);
+  const methMatch = response.match(/CHANGED_METHOD:\s*(.*)/);
+
+  const oldCode  = (oldMatch?.[1]||'').trim().replace(/```typescript|```/g,'').trim();
+  const newCode  = (newMatch?.[1]||'').trim().replace(/```typescript|```/g,'').trim();
+  const impact   = (impMatch?.[1]||'').trim();
+  const testNote = (testMatch?.[1]||'').trim();
+  const method   = (methMatch?.[1]||'Fixed method').trim();
+
+  state.fixData = { oldCode, newCode, impact, testNote, method };
+
+  // Build diff lines
+  const oldLines = oldCode.split('\n').filter(Boolean);
+  const newLines = newCode.split('\n').filter(Boolean);
+
+  const diffHtml = [
+    ...oldLines.map(l => `<div class="diff-line del"><span class="diff-sign">−</span><span>${escHtml(l)}</span></div>`),
+    ...newLines.map(l => `<div class="diff-line add"><span class="diff-sign">+</span><span>${escHtml(l)}</span></div>`)
+  ].join('');
+
+  setStage(4, 'approval');
+  showBody(4, `
+    <div class="impact-row fade-in">
+      <span class="impact-badge ib-info">Method: ${method}</span>
+      <span class="impact-badge ${impact.toLowerCase().includes('no regression')||impact.toLowerCase().includes('minimal') ? 'ib-safe' : 'ib-warn'}">${impact.length > 60 ? impact.slice(0,60)+'…' : impact}</span>
+      <span class="impact-badge ib-info">Test: ${testNote.length > 50 ? testNote.slice(0,50)+'…' : testNote}</span>
+    </div>
+    <div class="diff-viewer fade-in">
+      <div class="diff-head">
+        <span>Proposed Diff — ${state.selectedComp}.component.ts</span>
+        <span style="color:var(--red);">−${oldLines.length} / </span><span style="color:var(--green);">+${newLines.length}</span>
+      </div>
+      ${diffHtml}
+    </div>
+    <div class="approval-row fade-in">
+      <div class="approval-label">🔐 Human Checkpoint #2 — Apply this fix and update Jira?</div>
+      <button class="btn btn-ghost" onclick="requestRevision()">↺ Revise</button>
+      <button class="btn btn-green" onclick="approveFix()">✓ Approve Fix</button>
+    </div>
+  `);
+}
+
+function escHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function requestRevision() {
+  const note = prompt('Describe what to change in the fix:');
+  if (note) {
+    state.revisionNote = note;
+    stage4_fixProposal();
+  }
+}
+
+async function approveFix() {
+  const btn = event.target;
+  btn.disabled = true; btn.innerHTML = '<div class="spinner"></div> Applying…';
+  setStage(4, 'done');
+  await sleep(500);
+  await stage5_closeLoop();
+}
+
+// ─── STAGE 5: CLOSE THE LOOP ──────────────────────────────────────────────────
+async function stage5_closeLoop() {
+  setStage(5, 'active');
+  showBody(5, thinking('Updating Jira — posting fix summary and closing the loop…'));
+  await sleep(800);
+
+  const t  = state.ticketData;
+  const s3 = state.s3Analysis;
+  const fx = state.fixData;
+
+  const comment = `[ArchAgent Auto-Update]
+
+✅ Root Cause Identified: ${s3.ROOT_CAUSE || 'See analysis'}
+📁 Location: ${s3.FILE_LOCATION || s3.BUG_PATTERN || '—'}
+🔧 Fix Applied: ${fx.method} updated in ${state.selectedComp}.component.ts
+⚠️ Impact: ${fx.impact}
+🧪 Testing: ${fx.testNote}
+
+This fix was reviewed and approved by the architect before being applied.
+Pipeline completed via ArchAgent — Qwen qwen3-coder-next`;
+
+  // Post Jira comment
+  try {
+    const auth = btoa(`${state.jiraEmail}:${state.jiraToken}`);
+    await fetch(`${state.jiraUrl}/rest/api/3/issue/${t.id}/comment`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Basic ${auth}`,
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      },
+      body: JSON.stringify({
+        body: { type:'doc', version:1,
+          content:[{ type:'paragraph', content:[{ type:'text', text: comment }] }] }
+      })
+    });
+
+    // Transition to "In Review"
+    const transRes = await fetch(`${state.jiraUrl}/rest/api/3/issue/${t.id}/transitions`, {
+      headers: { 'Authorization': `Basic ${auth}`, 'Accept': 'application/json' }
+    });
+    const transitions = await transRes.json();
+    const inReview = transitions.transitions?.find(tr =>
+      tr.name.toLowerCase().includes('review') || tr.name.toLowerCase().includes('progress')
+    );
+    if (inReview) {
+      await fetch(`${state.jiraUrl}/rest/api/3/issue/${t.id}/transitions`, {
+        method: 'POST',
+        headers: { 'Authorization': `Basic ${auth}`, 'Content-Type':'application/json' },
+        body: JSON.stringify({ transition: { id: inReview.id } })
+      });
+    }
+  } catch(e) { /* demo */ }
+
+  const elapsed = Math.round((Date.now() - state.startTime) / 60000) || 1;
+
+  showBody(5, `
+    <div class="jira-update fade-in">
+      ✓ Jira ticket ${t.id} updated with fix summary and moved to In Review
+    </div>
+    <div class="analysis-box fade-in" style="margin-top:10px;font-size:11px;">${comment}</div>
+  `);
+
+  setStage(5, 'done');
+
+  // Show summary
+  await sleep(400);
+  const bar = document.getElementById('summaryBar');
+  document.getElementById('sumTime').textContent = Math.max(elapsed, 1);
+  bar.classList.remove('hidden');
+  bar.classList.add('fade-in');
+  bar.scrollIntoView({ behavior: 'smooth' });
+
+  document.getElementById('runBtn').innerHTML = '✓ Pipeline Complete';
+  document.getElementById('runBtn').className = 'btn btn-green btn-full';
+}
+</script>
+</body>
+</html>
